@@ -1,7 +1,12 @@
+"""
+This module contains tools to decode and render the full background map from
+Game Boy VRAM binary dumps into PNG images.
+"""
 import sys
 from PIL import Image
 
 def decode_tile(tile_bytes):
+    """Decodes 16 bytes of 2BPP data into an 8x8 pixel array."""
     pixels = []
     for i in range(0, 16, 2):
         b1, b2 = tile_bytes[i], tile_bytes[i+1]
@@ -11,13 +16,15 @@ def decode_tile(tile_bytes):
     return pixels
 
 def render_full_map(vram_bin, output_png):
+    """Decodes VRAM data, reconstructs the full background map using
+    background map indices, and saves it to a PNG."""
     with open(vram_bin, "rb") as f:
         data = f.read()
 
     # VRAM structure:
     # 0x0000 - 0x17FF: Tile Data (384 tiles)
     # 0x1800 - 0x1BFF: BG Map 1 ($9800-$9BFF)
-    
+
     # 1. Decode all tiles into a dictionary
     tiles = {}
     for i in range(384):
@@ -26,17 +33,17 @@ def render_full_map(vram_bin, output_png):
 
     # 2. Build the 256x256 map (32x32 tiles)
     full_map = Image.new('L', (256, 256))
-    bg_map_start = 0x1800 
+    bg_map_start = 0x1800
 
     for row in range(32):
         for col in range(32):
             # Get tile index from the background map
             tile_idx = data[bg_map_start + (row * 32) + col]
-            
+
             # Note: Handle Signed vs Unsigned addressing if using 0x8800 method
             # For simplicity, we assume 0x8000 addressing here
             tile_pixels = tiles.get(tile_idx, [0]*64)
-            
+
             tile_img = Image.frombytes('L', (8, 8), bytes(tile_pixels))
             full_map.paste(tile_img, (col * 8, row * 8))
 
